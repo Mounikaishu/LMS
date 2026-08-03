@@ -1,27 +1,33 @@
 from pathlib import Path
+import os
 
-# ==========================
-# Project Root
-# ==========================
+# ==============================
+# LMS Project Directory
+# ==============================
+
 BASE_DIR = Path(__file__).resolve().parent
 
-# ==========================
-# Repository
-# ==========================
-REPOSITORY = BASE_DIR / "repositories" / "college-materials"
+# ==============================
+# Repository Path
+# ==============================
 
-# ==========================
-# Upload Folder
-# ==========================
+DEFAULT_REPOSITORY = Path(r"C:\repositories\college-materials")
+
+
+REPOSITORY = Path(
+    os.getenv(
+        "COLLEGE_REPOSITORY",
+        str(DEFAULT_REPOSITORY)
+    )
+)
+
+# ==============================
+# Local Folders
+# ==============================
+
 UPLOAD_FOLDER = BASE_DIR / "uploads"
-
-# ==========================
-# Temporary Folder
-# ==========================
 TEMP_FOLDER = BASE_DIR / "temp"
 
-# ==========================
-# Create folders if missing
-# ==========================
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 TEMP_FOLDER.mkdir(exist_ok=True)
+print("Repository Path:", REPOSITORY)
