@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 from services.git_manager import git_push
+from services.index_service import save_index
 
 from config import (
     UPLOAD_FOLDER,
@@ -57,11 +58,15 @@ def process_upload(
     )
 
     convert_to_markdown(
-        pdf_path,
-        output_md
-    )
+    pdf_path,
+    output_md
+)
+    print("REPOSITORY =", REPOSITORY)
+    save_index(REPOSITORY)
+
     git_push(
     f"Added {department} {semester} {subject} {unit}"
 )
-
+    if pdf_path.exists():
+        pdf_path.unlink()
     return output_md
