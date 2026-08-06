@@ -3,6 +3,7 @@ from pathlib import Path
 from config import REPOSITORY, TEMP_FOLDER
 from converter import convert_to_markdown
 from git_manager import push_changes
+from services.index_service import save_index
 
 
 def upload_material(
@@ -58,7 +59,7 @@ def upload_material(
         temp_file,
         markdown_file
     )
-
+    save_index(REPOSITORY)
     # -------------------------
     # Delete temporary file
     # -------------------------

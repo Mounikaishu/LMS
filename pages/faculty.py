@@ -1,33 +1,45 @@
 import streamlit as st
 from services.upload_service import process_upload
-from services.repository_manager import (
-    get_departments,
-    get_semesters,
-    get_subjects,
-    create_subject,
-    create_unit,
-)
+from services.github_index_reader import load_index
 
 st.title("📚 Faculty Upload")
 
 # -----------------------------
-# Department
+# Load index
 # -----------------------------
+data = load_index()
+
+departments = sorted(data.keys())
+
 department = st.selectbox(
     "Department",
-    get_departments()
+    departments
 )
-#-----------------------------
-#semester
-#-----------------------------
+
+# -----------------------------
+# Semester
+# -----------------------------
+semesters = list(data.get(department, {}).keys())
+
+semester_options = semesters + ["Create New Semester"]
+
 semester = st.selectbox(
     "Semester",
-    get_semesters()
+    semester_options
 )
+
+if semester == "Create New Semester":
+    semester = st.text_input("Semester Name")
 
 # -----------------------------
 # Subject
 # -----------------------------
+subjects = list(
+    data.get(department, {})
+        .get(semester, {})
+        .keys()
+)
+
 mode = st.radio(
     "Subject",
     [
@@ -37,11 +49,6 @@ mode = st.radio(
 )
 
 if mode == "Existing Subject":
-
-    subjects = get_subjects(
-        department,
-        semester
-    )
 
     if subjects:
         subject = st.selectbox(
@@ -53,7 +60,6 @@ if mode == "Existing Subject":
         subject = ""
 
 else:
-
     subject = st.text_input(
         "New Subject"
     )
@@ -64,16 +70,22 @@ else:
 unit = st.text_input("Unit Name")
 
 # -----------------------------
-# Upload
+# Upload File
 # -----------------------------
 uploaded_file = st.file_uploader(
     "Upload PDF / PPT / DOCX",
     type=["pdf", "ppt", "pptx", "docx"]
 )
 
+# -----------------------------
+# Upload Button
+# -----------------------------
 if st.button("Upload"):
 
-    if not subject:
+    if not semester:
+        st.error("Please enter a semester.")
+
+    elif not subject:
         st.error("Please enter/select a subject.")
 
     elif not unit:
@@ -93,7 +105,5 @@ if st.button("Upload"):
         )
 
         st.success("✅ Upload Successful!")
-
-        st.write("Markdown Saved To:")
-
+        st.write("Markdown saved to:")
         st.code(str(output_file))
