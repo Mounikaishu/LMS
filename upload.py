@@ -1,85 +1,128 @@
 from pathlib import Path
 
-from config import REPOSITORY, TEMP_FOLDER
-from converter import convert_to_markdown
-from git_manager import push_changes
+from config import UPLOAD_FOLDER
+
+from services.converter import convert_to_markdown
+from services.git_manager import (
+    clone_repository,
+    commit_changes,
+    push_changes,
+    cleanup_repository,
+)
 from services.index_service import save_index
 
 
-def upload_material(
+def save_uploaded_file(uploaded_file):
+    """
+    Save uploaded file temporarily.
+    """
+
+    destination = UPLOAD_FOLDER / uploaded_file.name
+
+    with open(destination, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    return destination
+
+
+def markdown_output_path(
+    repo_path,
     department,
     semester,
     subject,
     unit,
-    uploaded_file
 ):
     """
-    Upload a faculty document to the repository.
-
-    uploaded_file is the object returned by
-    st.file_uploader().
+    Create folder structure inside the cloned repository.
     """
 
-    # -------------------------
-    # Repository Path
-    # -------------------------
-
-    destination_folder = (
-        REPOSITORY
+    folder = (
+        repo_path
         / department
-        / f"Semester{semester}"
+        / semester
         / subject
     )
 
-    destination_folder.mkdir(
+    folder.mkdir(
         parents=True,
-        exist_ok=True
+        exist_ok=True,
     )
 
-    # -------------------------
-    # Save uploaded document temporarily
-    # -------------------------
+    return folder / f"{unit}.md"
 
-    temp_file = TEMP_FOLDER / uploaded_file.name
 
-    with open(temp_file, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+def process_upload(
+    uploaded_file,
+    department,
+    semester,
+    subject,
+    unit,
+):
 
-    # -------------------------
-    # Markdown destination
-    # -------------------------
+    repo_path = None
+    pdf_path = None
 
-    markdown_file = destination_folder / f"{unit}.md"
+    try:
 
-    # -------------------------
-    # Convert using Docling
-    # -------------------------
+        # -----------------------------
+        # Save uploaded PDF temporarily
+        # -----------------------------
+        pdf_path = save_uploaded_file(uploaded_file)
 
-    convert_to_markdown(
-        temp_file,
-        markdown_file
-    )
-    save_index(REPOSITORY)
-    # -------------------------
-    # Delete temporary file
-    # -------------------------
+        # -----------------------------
+        # Clone repository
+        # -----------------------------
+        repo_path = clone_repository()
 
-    temp_file.unlink()
+        # -----------------------------
+        # Markdown destination
+        # -----------------------------
+        output_md = markdown_output_path(
+            repo_path,
+            department,
+            semester,
+            subject,
+            unit,
+        )
 
-    # -------------------------
-    # Push changes
-    # -------------------------
+        # -----------------------------
+        # Convert to Markdown
+        # -----------------------------
+        convert_to_markdown(
+            pdf_path,
+            output_md,
+        )
 
-    commit_message = (
-        f"{department} | "
-        f"Semester {semester} | "
-        f"{subject} | "
-        f"{unit}"
-    )
+        # -----------------------------
+        # Update index.json
+        # -----------------------------
+        save_index(repo_path)
 
-    push_changes(
-        REPOSITORY,
-        commit_message
-    )
+        # -----------------------------
+        # Commit
+        # -----------------------------
+        commit_changes(
+            repo_path,
+            f"Added {department} {semester} {subject} {unit}",
+        )
 
-    return markdown_file
+        # -----------------------------
+        # Push
+        # -----------------------------
+        push_changes(repo_path)
+
+        return output_md
+
+    finally:
+
+        # -----------------------------
+        # Delete uploaded PDF
+        # -----------------------------
+        if pdf_path and pdf_path.exists():
+            pdf_path.unlink()
+
+        # -----------------------------
+        # Delete temporary repository
+        # -----------------------------
+        if repo_path:
+            cleanup_repository(repo_path)
